@@ -37,6 +37,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "Adafruit_NeoPixel.h"
+
 
 #ifndef ARDUINO_ESP8266_ESP01
 #include "DNSServer/DNSServer.h"
@@ -65,6 +67,19 @@ extern "C" void __coogle_iot_sketch_timer_callback(void *);
 
 class CoogleIOTWebserver;
 
+#define COOGLE_STATUS_PIXEL 0
+#define COOGLE_STATUS_NEOPIXEL 1
+
+#define STATUS_INIT         Adafruit_NeoPixel::Color(255,255,255) // bright white
+#define STATUS_OK           Adafruit_NeoPixel::Color(127,127,127) // white
+#define STATUS_ERROR        Adafruit_NeoPixel::Color(150,0,0)     // red
+#define STATUS_WARNING      Adafruit_NeoPixel::Color(150,150,0)   // yellow 
+#define STATUS_INIT_WIFI    Adafruit_NeoPixel::Color(0,0,50)      // pale blue
+#define STATUS_WORKING_WIFI Adafruit_NeoPixel::Color(0,0,200)     // bright blue
+#define STATUS_INIT_MQTT    Adafruit_NeoPixel::Color(0,50,0)      // pale green
+#define STATUS_WORKING_MQTT Adafruit_NeoPixel::Color(0,200,0)     // bright green
+#define STATUS_COMUNICATING Adafruit_NeoPixel::Color(150,0,150)   // purple
+
 class CoogleIOT
 {
     public:
@@ -73,7 +88,7 @@ class CoogleIOT
 		bool sketchTimerTick = false;
 		bool _restarting = false;
 
-        CoogleIOT(int);
+        CoogleIOT(int, int=COOGLE_STATUS_PIXEL);
         CoogleIOT();
         ~CoogleIOT();
         void loop();
@@ -84,11 +99,12 @@ class CoogleIOT
         CoogleIOT& enableSerial();
         PubSubClient* getMQTTClient();
         bool serialEnabled();
-        CoogleIOT& flashStatus(int);
-        CoogleIOT& flashStatus(int, int);
+        CoogleIOT& flashStatus(int, uint32_t = STATUS_OK);
+        CoogleIOT& flashStatus(int, int, uint32_t);
         CoogleIOT& flashSOS();
-        	CoogleIOT& resetEEProm();
-        	void restartDevice();
+        CoogleIOT& resetEEProm();
+        void restartDevice();
+        CoogleIOT& flashPixel(uint32_t);
 
         String getRemoteAPName();
         String getRemoteAPPassword();
@@ -105,6 +121,7 @@ class CoogleIOT
         int getMQTTPort();
         String getFirmwareUpdateUrl();
         String getWiFiStatus();
+        int getWiFiStatusCode();
         String getTimestampAsString();
 
         bool verifyFlashConfiguration();
@@ -150,6 +167,7 @@ class CoogleIOT
 
         bool _serial;
         int _statusPin;
+        Adafruit_NeoPixel* _statusPixel;
 
         HTTPUpdateResult firmwareUpdateStatus;
         time_t now;
@@ -185,6 +203,8 @@ class CoogleIOT
         bool connectToSSID();
         bool initializeMQTT();
         bool connectToMQTT();
+        
+        String getEncryptionType(int thisType);
 };
 
 #endif

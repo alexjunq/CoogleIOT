@@ -40,9 +40,16 @@ extern "C" void __coogle_iot_sketch_timer_callback(void *pArg)
 	__coogle_iot_self->sketchTimerTick = true;
 }
 
-CoogleIOT::CoogleIOT(int statusPin)
+CoogleIOT::CoogleIOT(int statusPin, int statusPixel)
 {
-    _statusPin = statusPin;
+	switch (statusPixel) {
+		case COOGLE_STATUS_PIXEL:
+		    _statusPin = statusPin;
+			break;
+		case COOGLE_STATUS_NEOPIXEL:
+			_statusPixel = new Adafruit_NeoPixel(1, statusPin, NEO_GRB + NEO_KHZ800);
+			break;
+	}
     _serial = false;
 }
 
@@ -55,6 +62,10 @@ CoogleIOT::~CoogleIOT()
 {
 	delete mqttClient;
 	delete webServer;
+
+	if (_statusPixel) {
+		delete _statusPixel;
+	}
 
 	if(logFile) {
 		logFile.close();
@@ -337,7 +348,7 @@ void CoogleIOT::loop()
 
 		wifiFailuresCount = 0;
 
-		if(!mqttClient->connected()) {
+		if(mqttClient && !mqttClient->connected()) {
 			yield();
 			if(!connectToMQTT()) {
 				mqttFailuresCount++;
@@ -447,6 +458,10 @@ bool CoogleIOT::apStatus()
 	return _apStatus;
 }
 
+int CoogleIOT::getWiFiStatusCode() {
+	return WiFi.status();
+}
+
 String CoogleIOT::getWiFiStatus()
 {
 	String retval;
@@ -500,14 +515,31 @@ CoogleIOT& CoogleIOT::syncNTPTime(int offsetSeconds, int daylightOffsetSec)
 	return *this;
 }
 
-CoogleIOT& CoogleIOT::flashStatus(int speed)
+CoogleIOT& CoogleIOT::flashStatus(int speed, uint32_t flag)
 {
-	flashStatus(speed, 5);
+	// if using new pixel ... use parameter as speed (original behaviour)
+	if (_statusPin > -1) {
+		flashStatus(speed, 5, flag);
+	}
+	// using NeoPixel, consider this a flag 
+	if (_statusPixel) {
+		//flashPixel(flag);
+	}
 	return *this;
 }
 
-CoogleIOT& CoogleIOT::flashStatus(int speed, int repeat)
+CoogleIOT& CoogleIOT::flashPixel(uint32_t c) {
+	if (_statusPixel) {
+		_statusPixel->setPixelColor(0, c);
+		_statusPixel->show();
+	}
+
+	return *this;
+}
+
+CoogleIOT& CoogleIOT::flashStatus(int speed, int repeat, uint32_t c)
 {
+	// using status pin
 	if(_statusPin > -1) {
 		for(int i = 0; i < repeat; i++) {
 			digitalWrite(_statusPin, LOW);
@@ -519,6 +551,11 @@ CoogleIOT& CoogleIOT::flashStatus(int speed, int repeat)
 		digitalWrite(_statusPin, HIGH);
 	}
 
+	// using neopixel 
+	if (_statusPixel) {
+		//flashPixel(c);
+	}
+
 	return *this;
 }
 
@@ -527,7 +564,7 @@ bool CoogleIOT::initialize()
 	String firmwareUrl;
 	String localAPName;
 
-	if(_statusPin > -1) {
+	if(_statusPin > -1) {		
 		pinMode(_statusPin, OUTPUT);
 		flashStatus(COOGLEIOT_STATUS_INIT);
 	}
@@ -635,6 +672,7 @@ bool CoogleIOT::verifyFlashConfiguration()
 		debug("Flash Chip Configuration Verified: OK");
 	}
 
+	return 1;
 }
 
 void CoogleIOT::enableConfigurationMode()
@@ -656,9 +694,9 @@ void CoogleIOT::initializeLocalAP()
 {
 	String localAPName, localAPPassword;
 
-	IPAddress apLocalIP(192,168,0,1);
+	IPAddress apLocalIP(192,168,100,1);
 	IPAddress apSubnetMask(255,255,255,0);
-	IPAddress apGateway(192,168,0,1);
+	IPAddress apGateway(192,168,100,1);
 
 	localAPName = getAPName();
 	localAPPassword = getAPPassword();
@@ -926,6 +964,8 @@ CoogleIOT& CoogleIOT::setRemoteAPName(String s)
 		error("Failed to write Remote AP name to EEPROM");
 	}
 
+	logPrintf(INFO, "wrinting remote AP name %s", s.c_str());
+
 	return *this;
 }
 
@@ -939,6 +979,9 @@ CoogleIOT& CoogleIOT::setRemoteAPPassword(String s)
 	if(!eeprom.writeString(COOGLEIOT_REMOTE_AP_PASSWORD_ADDR, s)) {
 		error("Failed to write Remote AP Password to EEPROM");
 	}
+
+	logPrintf(INFO, "wrinting remote AP password %s", s.c_str());
+
 
 	return *this;
 }
@@ -999,6 +1042,8 @@ CoogleIOT& CoogleIOT::setAPPassword(String s)
 	if(!eeprom.writeString(COOGLEIOT_AP_PASSWORD_ADDR, s)) {
 		error("Failed to write AP Password to EEPROM");
 	}
+
+	logPrintf(INFO, "local password [ % s ]", s.c_str());
 
 	return *this;
 }
@@ -1211,6 +1256,25 @@ String CoogleIOT::getRemoteAPPassword()
 	return filterAscii(retval);
 }
 
+
+String CoogleIOT::getEncryptionType(int thisType) {
+  // read the encryption type and print out the name:
+  switch (thisType) {
+    case ENC_TYPE_WEP:
+		return "WEP";
+    case ENC_TYPE_TKIP:
+		return "WPA";
+    case ENC_TYPE_CCMP:
+		return "WPA2";
+    case ENC_TYPE_NONE:
+		return "None";
+    case ENC_TYPE_AUTO:
+		return "Auto";
+  }
+  return "";
+}
+
+
 bool CoogleIOT::connectToSSID()
 {
 	String remoteAPName;
@@ -1224,10 +1288,24 @@ bool CoogleIOT::connectToSSID()
 
 	if(remoteAPName.length() == 0) {
 		info("Cannot connect WiFi client, no remote AP specified");
+
+		/** list available Wifi networks **/
+
+		int wifi_counter = WiFi.scanNetworks();
+		char buffer[255];
+		for (int i = 0; i < wifi_counter; i++) {
+			sprintf(buffer, "network %s (%d) %s", WiFi.SSID(i).c_str(), WiFi.RSSI(i), this->getEncryptionType(WiFi.encryptionType(i)).c_str());
+			info(buffer);
+		}
+
 		return false;
 	}
 
-	info("Connecting to remote AP");
+	info("Connecting to remote AP [");
+	info(remoteAPName);
+	info(" ] [ ");
+	info(remoteAPPassword);
+	info(" ]");
 
 	if(remoteAPPassword.length() == 0) {
 		warn("No Remote AP Password Specified!");
