@@ -116,6 +116,8 @@ class CoogleIOT
         String getMQTTLWTMessage();
         String getAPName();
         String getAPPassword();
+        String getKonkerDeviceId();
+        String getKonkerDevicePassword();
 
         String filterAscii(String);
         int getMQTTPort();
@@ -139,6 +141,8 @@ class CoogleIOT
         CoogleIOT& setAPPassword(String);
         CoogleIOT& setFirmwareUpdateUrl(String);
         CoogleIOT& syncNTPTime(int, int);
+        CoogleIOT& setKonkerDeviceId(String);
+        CoogleIOT& setKonkerDevicePassword(String);
 
         CoogleIOT& warn(String);
         CoogleIOT& error(String);
@@ -162,12 +166,17 @@ class CoogleIOT
         bool apStatus();
 
         void checkForFirmwareUpdate();
+        int getRemoteWifiStatus(); 
+
+        void setVersion(String);
+        String getVersion();
 
     private:
 
         bool _serial;
         int _statusPin;
         Adafruit_NeoPixel* _statusPixel;
+        String _version;
 
         HTTPUpdateResult firmwareUpdateStatus;
         time_t now;
@@ -181,6 +190,7 @@ class CoogleIOT
         CoogleEEProm eeprom;
         CoogleIOTWebserver *webServer;
         File logFile;
+        int _remoteWifiStatus = 0;
 
         os_timer_t firmwareUpdateTimer;
         os_timer_t heartbeatTimer;

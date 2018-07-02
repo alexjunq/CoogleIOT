@@ -128,8 +128,29 @@
          </tbody>
         </table>
       </div>
+
       <input type="radio" name="navtabs" id="tab5" aria-hidden="true">
-      <label for="tab5" aria-hidden="true">Logs</label>
+      <label for="tab5" aria-hidden="true">KonkerIOT</label>
+      <div style="height: 500px">
+        <table class="horizontal">
+          <caption>KonkerIOT INFO</caption>
+          <thead>
+            <tr>
+              <th>device ID</th>
+              <th>device password</th>
+            </tr>
+         </thead>
+         <tbody>
+           <tr>
+             <td data-label="Device ID">{{konker_device_id}}</td>
+             <td data-label="Device Password">{{konker_device_password}}</td>
+           </tr>
+         </tbody>
+        </table>
+      </div>
+
+      <input type="radio" name="navtabs" id="tab6" aria-hidden="true">
+      <label for="tab6" aria-hidden="true">Logs</label>
       <div style="height: 600px">
         <div style="text-align: right;"><button class="primary" type="button" id="refreshLogBtn">Refresh Log</button></div>
         <hr/>

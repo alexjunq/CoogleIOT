@@ -26,12 +26,12 @@
 const char WEBPAGE_Home[] PROGMEM = R"=====(
 <html>
   <head>
-    <title>CoogleIOT Firmware</title>
+    <title>Konker IOT Firmware</title>
     <link href="/css" type="text/css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body>
-    <h3>CoogleIOT Device Setup</h3>
+    <h3>KONKER IOT Device Setup</h3>
     <div class="tabs" style="margin-top: 5px; margin-bottom: 5px;">
       <input type="radio" name="navtabs" id="tab1" checked="" aria-hidden="true">
       <label for="tab1" aria-hidden="true">WiFi</label>
@@ -60,41 +60,6 @@ const char WEBPAGE_Home[] PROGMEM = R"=====(
               <input aria-hidden="true"type="password" value="{{remote_ap_password}}" id="ap_remote_password">
            </div>
          </fieldset>
-      </div>
-      <input type="radio" name="navtabs" id="tab2" aria-hidden="true">
-      <label for="tab2" aria-hidden="true">MQTT</label>
-      <div style="height: 600px">
-        <fieldset>
-          <legend>MQTT Client Configuration</legend>
-          <div class="input-group fluid">
-            <label aria-hidden="true" for="mqtt_host">MQTT Host</label>
-            <input aria-hidden="true" type="text" value="{{mqtt_host}}" id="mqtt_host" placeholder="mqtt.example.com">
-          </div>
-          <div class="input-group fluid">
-            <label aria-hidden="true" for="mqtt_port">MQTT Port</label>
-            <input aria-hidden="true" type="text" value="{{mqtt_port}}" id="mqtt_port" placeholder="1883">
-          </div>
-          <div class="input-group fluid">
-            <label aria-hidden="true" for="mqtt_username">MQTT Username</label>
-            <input aria-hidden="true" type="text" value="{{mqtt_username}}" id="mqtt_username" placeholder="coogleiot">
-          </div>
-          <div class="input-group fluid">
-            <label aria-hidden="true" for="mqtt_password">MQTT Pasword</label>
-            <input aria-hidden="true" type="password" id="mqtt_password" value="{{mqtt_password}}">
-          </div>
-          <div class="input-group fluid">
-            <label aria-hidden="true" for="mqtt_client_id">MQTT Client ID</label>
-            <input aria-hidden="true" type="text" value="{{mqtt_client_id}}" id="mqtt_client_id" placeholder="my-client-id">
-          </div>
-          <div class="input-group fluid">
-            <label aria-hidden="true" for="mqtt_lwt_topic">MQTT LWT Topic</label>
-            <input aria-hidden="true" type="text" value="{{mqtt_lwt_topic}}" id="mqtt_lwt_topic" placeholder="LWT topic">
-          </div>
-          <div class="input-group fluid">
-            <label aria-hidden="true" for="mqtt_lwt_message">MQTT LWT Message</label>
-            <input aria-hidden="true" type="text" value="{{mqtt_lwt_message}}" id="mqtt_lwt_message" placeholder="LWT message">
-          </div>
-        </fieldset>
       </div>
       <input type="radio" name="navtabs" id="tab3" aria-hidden="true">
       <label for="tab3" aria-hidden="true">System</label>
@@ -159,7 +124,26 @@ const char WEBPAGE_Home[] PROGMEM = R"=====(
         </table>
       </div>
       <input type="radio" name="navtabs" id="tab5" aria-hidden="true">
-      <label for="tab5" aria-hidden="true">Logs</label>
+      <label for="tab5" aria-hidden="true">KonkerIOT</label>
+      <div style="height: 500px">
+        <fieldset>
+          <legend>KonkerIOT Device INFO</legend>
+          <div class="input-group fluid">
+            <label aria-hidden="true" for="konker_device_id">Device ID</label>
+            <input aria-hidden="true" type="text" value="{{konker_device_id}}" id="konker_device_id" placeholder="konker-user-id-for-device">
+          </div>
+          <div class="input-group fluid">
+            <label aria-hidden="true" for="konker_device_password">Device Password</label>
+            <input aria-hidden="true" type="text" value="{{konker_device_password}}" id="konker_device_password" placeholder="password generated">
+          </div>
+          <div class="input-group fluid">
+            <label aria-hidden="true" for="konker_version">VERSION ID</label>
+            <input aria-hidden="true" type="text" value="{{konker_version}}" id="konker_version" placeholder="konker version">
+          </div>
+        </fieldset>      
+      </div>
+      <input type="radio" name="navtabs" id="tab6" aria-hidden="true">
+      <label for="tab6" aria-hidden="true">Logs</label>
       <div style="height: 600px;">
         <div style="text-align: right;"><button class="primary" type="button" id="refreshLogBtn">Refresh Log</button></div>
         <hr/>
@@ -205,15 +189,16 @@ const char WEBPAGE_Home[] PROGMEM = R"=====(
             'mqtt_client_id' : $('#mqtt_client_id').val(),
             'mqtt_lwt_topic' : $('#mqtt_lwt_topic').val(),
             'mqtt_lwt_message' : $('#mqtt_lwt_message').val(),
-            'firmware_url' : $('#firmware_url').val()
+            'firmware_url' : $('#firmware_url').val(),
+            'konker_device_id' : $('#konker_device_id').val(),
+            'konker_device_password' : $('#konker_device_password').val()
           }
-
           console.log(postData);
-
           $.post('/api/save', postData, function(result) {
 
             if(!result.status) {
               alert("Failed to save settings");
+              console.log(result);
               return;
             }
 

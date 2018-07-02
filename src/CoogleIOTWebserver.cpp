@@ -163,11 +163,14 @@ String CoogleIOTWebserver::htmlEncode(String& input)
 }
 void CoogleIOTWebserver::handleRoot()
 {
+
+	//iot->info(">>>> handling / request");
 	String page(FPSTR(WEBPAGE_Home));
 	String ap_name, ap_password, ap_remote_name, ap_remote_password,
 	       mqtt_host, mqtt_username, mqtt_password, mqtt_client_id,
 				 mqtt_lwt_topic, mqtt_lwt_message, firmware_url, mqtt_port,
-				 local_ip, mac_address, wifi_status, logs;
+				 local_ip, mac_address, wifi_status, logs,
+				 konker_device_id, konker_device_password, konker_version;
 
 	ap_name = iot->getAPName();
 	ap_password = iot->getAPPassword();
@@ -184,7 +187,13 @@ void CoogleIOTWebserver::handleRoot()
 	local_ip = WiFi.localIP().toString();
 	mac_address = WiFi.macAddress();
 	wifi_status = iot->getWiFiStatus();
+	konker_device_id = iot->getKonkerDeviceId();
+	konker_device_password = iot->getKonkerDevicePassword();
+	konker_version = iot->getVersion();
 
+	page.replace(F("{{konker_device_id}}"), htmlEncode(konker_device_id));
+	page.replace(F("{{konker_device_password}}"), htmlEncode(konker_device_password));
+	page.replace(F("{{konker_version}}"), htmlEncode(konker_version));
 	page.replace(F("{{ap_name}}"), htmlEncode(ap_name));
 	page.replace(F("{{ap_password}}"), htmlEncode(ap_password));
 	page.replace(F("{{remote_ap_name}}"), htmlEncode(ap_remote_name));
@@ -331,7 +340,8 @@ void CoogleIOTWebserver::handleSubmit()
 
 	String ap_name, ap_password, remote_ap_name, remote_ap_password,
 	       mqtt_host, mqtt_port, mqtt_username, mqtt_password, mqtt_client_id,
-		   	mqtt_lwt_topic, mqtt_lwt_message,firmware_url;
+		   	mqtt_lwt_topic, mqtt_lwt_message,firmware_url,
+			konker_device_id, konker_device_password;
 
 	bool success = true;
 
@@ -347,6 +357,26 @@ void CoogleIOTWebserver::handleSubmit()
 	mqtt_lwt_topic = webServer->arg("mqtt_lwt_topic");
 	mqtt_lwt_message = webServer->arg("mqtt_lwt_message");
 	firmware_url = webServer->arg("firmware_url");
+	konker_device_id = webServer->arg("konker_device_id");
+	konker_device_password = webServer->arg("konker_device_password");
+
+	if (konker_device_id.length() > 0) {
+		if (konker_device_id.length() < COOGLEIOT_KONKER_DEVICE_ID_MAXLEN) {
+			iot->setKonkerDeviceId(konker_device_id);
+		} else {
+			errors.add("KONKER DEVICE ID IS TOO LONG");
+			success = false;
+		}
+	}
+
+	if (konker_device_password.length() > 0) {
+		if (konker_device_password.length() < COOGLEIOT_KONKER_DEVICE_PASSWORD_MAXLEN) {
+			iot->setKonkerDevicePassword(konker_device_password);
+		} else {
+			errors.add("KONKER DEVICE PASSWORD IS TOO LONG");
+			success = false;
+		}
+	}
 
 	if(ap_name.length() > 0) {
 		if(ap_name.length() < COOGLEIOT_AP_NAME_MAXLEN) {
@@ -393,8 +423,8 @@ void CoogleIOTWebserver::handleSubmit()
 		if(mqtt_port.toInt() > 0) {
 			iot->setMQTTPort(mqtt_port.toInt());
 		} else {
-			errors.add("The MQTT Port was Invalid");
-			success = false;
+//			errors.add("The MQTT Port was Invalid");
+//			success = false;
 		}
 	}
 

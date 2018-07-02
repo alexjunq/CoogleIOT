@@ -51,6 +51,7 @@ CoogleIOT::CoogleIOT(int statusPin, int statusPixel)
 			break;
 	}
     _serial = false;
+	_remoteWifiStatus = 0;
 }
 
 CoogleIOT::CoogleIOT()
@@ -281,6 +282,10 @@ bool CoogleIOT::serialEnabled()
 	return _serial;
 }
 
+int CoogleIOT::getRemoteWifiStatus() {
+	return _remoteWifiStatus;
+}
+
 void CoogleIOT::loop()
 {
 	struct tm* p_tm;
@@ -340,8 +345,10 @@ void CoogleIOT::loop()
 			if(!connectToSSID()) {
 				wifiFailuresCount++;
 				logPrintf(INFO, "Attempt %d failed. Will attempt %d times before restarting.", wifiFailuresCount, COOGLEIOT_MAX_WIFI_ATTEMPTS);
+				_remoteWifiStatus = 0;
 				return;
-			}
+			} 
+			_remoteWifiStatus = 1;
 		}
 
 	} else {
@@ -727,8 +734,12 @@ void CoogleIOT::initializeLocalAP()
 	WiFi.softAPConfig(apLocalIP, apGateway, apSubnetMask);
 	WiFi.softAP(localAPName.c_str(), localAPPassword.c_str());
 
+	info("Local AP Name: ");
+	info(localAPName);
 	info("Local IP Address: ");
 	info(WiFi.softAPIP().toString());
+	info("Local AP Password: ");
+	info(localAPPassword);
 
 #ifndef ARDUINO_ESP8266_ESP01
 	if(WiFi.status() != WL_CONNECTED) {
@@ -750,6 +761,19 @@ void CoogleIOT::initializeLocalAP()
 
 }
 
+String CoogleIOT::getKonkerDevicePassword()
+{
+	char data[COOGLEIOT_KONKER_DEVICE_PASSWORD_MAXLEN];
+
+	if(!eeprom.readString(COOGLEIOT_KONKER_DEVICE_PASSWORD_ADDR, data, COOGLEIOT_KONKER_DEVICE_PASSWORD_MAXLEN)) {
+		error("Failed to read Konker Device Password from EEPROM");
+	}
+
+	String retval(data);
+	return filterAscii(retval);
+}
+
+
 String CoogleIOT::getFirmwareUpdateUrl()
 {
 	char firmwareUrl[COOGLEIOT_FIRMWARE_UPDATE_URL_MAXLEN];
@@ -765,7 +789,7 @@ String CoogleIOT::getFirmwareUpdateUrl()
 String CoogleIOT::getMQTTHostname()
 {
 	char mqttHost[COOGLEIOT_MQTT_HOST_MAXLEN];
-
+	
 	if(!eeprom.readString(COOGLEIOT_MQTT_HOST_ADDR, mqttHost, COOGLEIOT_MQTT_HOST_MAXLEN)) {
 		error("Failed to read MQTT Server Hostname from EEPROM");
 	}
@@ -919,6 +943,34 @@ CoogleIOT& CoogleIOT::setMQTTPassword(String s)
 
 	if(!eeprom.writeString(COOGLEIOT_MQTT_USER_PASSWORD_ADDR, s)) {
 		error("Failed to write MQTT Password to EEPROM");
+	}
+
+	return *this;
+}
+
+CoogleIOT& CoogleIOT::setKonkerDeviceId(String s)
+{
+	if(s.length() > COOGLEIOT_KONKER_DEVICE_ID_MAXLEN) {
+		warn("Attempted to write beyond max length for Konker device ID");
+		return *this;
+	}
+
+	if(!eeprom.writeString(COOGLEIOT_KONKER_DEVICE_ID_ADDR, s)) {
+		error("Failed to write Konker Device ID to EEPROM");
+	}
+
+	return *this;
+}
+
+CoogleIOT& CoogleIOT::setKonkerDevicePassword(String s)
+{
+	if(s.length() > COOGLEIOT_KONKER_DEVICE_PASSWORD_MAXLEN) {
+		warn("Attempted to write beyond max length for Konker Device Password");
+		return *this;
+	}
+
+	if(!eeprom.writeString(COOGLEIOT_KONKER_DEVICE_PASSWORD_ADDR, s)) {
+		error("Failed to write Konker Device Password to EEPROM");
 	}
 
 	return *this;
@@ -1230,6 +1282,20 @@ String CoogleIOT::filterAscii(String s)
 	return retval;
 }
 
+String CoogleIOT::getKonkerDeviceId()
+{
+	char konkerDeviceId[COOGLEIOT_KONKER_DEVICE_ID_MAXLEN];
+
+	if(!eeprom.readString(COOGLEIOT_KONKER_DEVICE_ID_ADDR, konkerDeviceId, COOGLEIOT_KONKER_DEVICE_ID_MAXLEN)) {
+		error("Failed to read Konker Device ID from EEPROM");
+		konkerDeviceId[0] = 0;
+	}
+
+	String retval(konkerDeviceId);
+
+	return filterAscii(retval);
+}
+
 String CoogleIOT::getRemoteAPName()
 {
 	char remoteAPName[COOGLEIOT_AP_NAME_MAXLEN];
@@ -1290,6 +1356,7 @@ bool CoogleIOT::connectToSSID()
 		info("Cannot connect WiFi client, no remote AP specified");
 
 		/** list available Wifi networks **/
+		info("available WIFI networks");
 
 		int wifi_counter = WiFi.scanNetworks();
 		char buffer[255];
@@ -1297,15 +1364,14 @@ bool CoogleIOT::connectToSSID()
 			sprintf(buffer, "network %s (%d) %s", WiFi.SSID(i).c_str(), WiFi.RSSI(i), this->getEncryptionType(WiFi.encryptionType(i)).c_str());
 			info(buffer);
 		}
+		info("----------");
 
 		return false;
 	}
 
-	info("Connecting to remote AP [");
+	info("Connecting to remote AP: ");
 	info(remoteAPName);
-	info(" ] [ ");
 	info(remoteAPPassword);
-	info(" ]");
 
 	if(remoteAPPassword.length() == 0) {
 		warn("No Remote AP Password Specified!");
@@ -1332,6 +1398,7 @@ bool CoogleIOT::connectToSSID()
 	info("Connected to Remote Access Point!");
 	info("Our IP Address is:");
 	info(WiFi.localIP().toString());
+	_remoteWifiStatus = 1;
 
 	return true;
 }
@@ -1387,4 +1454,12 @@ CoogleIOT& CoogleIOT::enableSerial(int baud, SerialConfig config, SerialMode mod
 
     _serial = true;
     return *this;
+}
+
+void CoogleIOT::setVersion(String version) {
+	_version = version;
+}
+
+String CoogleIOT::getVersion() {
+	return _version;
 }
