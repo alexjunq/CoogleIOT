@@ -336,6 +336,10 @@ void CoogleIOT::loop()
 
 	}
 
+	yield();
+	webServer->loop();
+
+
 	if(WiFi.status() != WL_CONNECTED) {
 
 		remoteAPName = getRemoteAPName();
@@ -407,8 +411,6 @@ void CoogleIOT::loop()
 		}
 	}
 
-	yield();
-	webServer->loop();
 
 	yield();
 #ifndef ARDUINO_ESP8266_ESP01
@@ -564,6 +566,30 @@ CoogleIOT& CoogleIOT::flashStatus(int speed, int repeat, uint32_t c)
 	}
 
 	return *this;
+}
+
+void CoogleIOT::initializeWifi() {
+	String localAPName;
+	
+	WiFi.mode(WIFI_AP_STA);
+
+	localAPName = getAPName();
+
+	if(localAPName.length() > 0) {
+		WiFi.hostname(localAPName.c_str());
+	}
+
+	if(!connectToSSID()) {
+		error("Failed to connect to remote AP");
+	} else {
+
+		syncNTPTime(COOGLEIOT_TIMEZONE_OFFSET, COOGLEIOT_DAYLIGHT_OFFSET);
+
+		if(!initializeMQTT()) {
+			error("Failed to connect to MQTT Server");
+		}
+
+	}
 }
 
 bool CoogleIOT::initialize()
@@ -1347,7 +1373,7 @@ bool CoogleIOT::connectToSSID()
 	String remoteAPPassword;
 	String localAPName;
 
-	flashStatus(COOGLEIOT_STATUS_WIFI_INIT);
+	// flashStatus(COOGLEIOT_STATUS_WIFI_INIT);
 
 	remoteAPName = getRemoteAPName();
 	remoteAPPassword = getRemoteAPPassword();
@@ -1385,12 +1411,17 @@ bool CoogleIOT::connectToSSID()
 	}
 
 	for(int i = 0; (i < 50) && (WiFi.status() != WL_CONNECTED) && (WiFi.status() != WL_CONNECT_FAILED); i++) {
+		yield();
+		if (webServer)
+			webServer->loop();
+		yield();
+		// wait some time ... 
 		delay(500);
 	}
 
 	if(WiFi.status() != WL_CONNECTED) {
 		error("Could not connect to Access Point!");
-		flashSOS();
+		// flashSOS();
 
 		return false;
 	}
@@ -1462,4 +1493,12 @@ void CoogleIOT::setVersion(String version) {
 
 String CoogleIOT::getVersion() {
 	return _version;
+}
+
+String CoogleIOT::getInfo() {
+	char payload[255];
+	snprintf(payload, 254, "{\"ip-local\":\"%s\", \"ip-remote\":\"%s\", \"restart\":1}", WiFi.softAPIP().toString().c_str(), WiFi.localIP().toString().c_str());
+	payload[254] = '\0';
+
+	return String(payload);
 }

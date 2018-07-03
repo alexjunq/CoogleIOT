@@ -93,6 +93,7 @@ class CoogleIOT
         ~CoogleIOT();
         void loop();
         bool initialize();
+        void initializeWifi();
         CoogleIOT& enableSerial(int, SerialConfig, SerialMode);
         CoogleIOT& enableSerial(int, SerialConfig);
         CoogleIOT& enableSerial(int);
@@ -170,6 +171,9 @@ class CoogleIOT
 
         void setVersion(String);
         String getVersion();
+
+        String getInfo();
+        
 
     private:
 
