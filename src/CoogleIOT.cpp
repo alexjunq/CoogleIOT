@@ -132,6 +132,10 @@ String CoogleIOT::getTimestampAsString()
 
 String CoogleIOT::buildLogMsg(String msg, CoogleIOT_LogSeverity severity)
 {
+	return msg;
+/*	
+	char buffer[50];
+	snprintf(buffer, 50, "FREEHEAP: %ld", ESP.getFreeHeap());
 	String retval;
 	String timestamp;
 
@@ -158,7 +162,10 @@ String CoogleIOT::buildLogMsg(String msg, CoogleIOT_LogSeverity severity)
 			break;
 	}
 
+	retval = retval + buffer;
+
 	return retval;
+	*/
 }
 
 CoogleIOT& CoogleIOT::logPrintf(CoogleIOT_LogSeverity severity, const char *format, ...)
@@ -336,9 +343,6 @@ void CoogleIOT::loop()
 
 	}
 
-	yield();
-	webServer->loop();
-
 
 	if(WiFi.status() != WL_CONNECTED) {
 
@@ -356,11 +360,13 @@ void CoogleIOT::loop()
 		}
 
 	} else {
+		webServer->loop();
+		//yield();
 
 		wifiFailuresCount = 0;
 
 		if(mqttClient && !mqttClient->connected()) {
-			yield();
+			//yield();
 			if(!connectToMQTT()) {
 				mqttFailuresCount++;
 			}
@@ -368,7 +374,7 @@ void CoogleIOT::loop()
 
 		if(mqttClientActive) {
 			mqttFailuresCount = 0;
-			yield();
+			//yield();
 			mqttClient->loop();
 		}
 
@@ -381,7 +387,7 @@ void CoogleIOT::loop()
 				if( (p_tm->tm_hour == 12) &&
 					(p_tm->tm_min == 0) &&
 					(p_tm->tm_sec == 6)) {
-					yield();
+					//yield();
 					syncNTPTime(COOGLEIOT_TIMEZONE_OFFSET, COOGLEIOT_DAYLIGHT_OFFSET);
 				}
 			}
@@ -412,7 +418,7 @@ void CoogleIOT::loop()
 	}
 
 
-	yield();
+//	yield();
 #ifndef ARDUINO_ESP8266_ESP01
 	if(dnsServerActive) {
 		dnsServer.processNextRequest();
@@ -1175,7 +1181,7 @@ bool CoogleIOT::connectToMQTT()
 	String mqttHostname, mqttUsername, mqttPassword, mqttClientId, mqttLWTTopic, mqttLWTMessage;
 	int mqttPort;
 
-	if(mqttClient->connected()) {
+	if(mqttClient && mqttClient->connected()) {
 		mqttClientActive = true;
 		return true;
 	}
@@ -1219,7 +1225,7 @@ bool CoogleIOT::connectToMQTT()
 		}
 	}
 
-	if(!mqttClient->connected()) {
+	if(mqttClient && !mqttClient->connected()) {
 
 		switch(mqttClient->state()) {
 
@@ -1411,11 +1417,16 @@ bool CoogleIOT::connectToSSID()
 	}
 
 	for(int i = 0; (i < 50) && (WiFi.status() != WL_CONNECTED) && (WiFi.status() != WL_CONNECT_FAILED); i++) {
-		yield();
-		if (webServer)
+		// yield();
+		//if (webServer)
+		//
+		if (wifi_softap_get_station_num() >= 1) {
+			info("local client connected");
 			webServer->loop();
-		yield();
+		}
+		// yield();
 		// wait some time ... 
+		Serial.print(".");
 		delay(500);
 	}
 
